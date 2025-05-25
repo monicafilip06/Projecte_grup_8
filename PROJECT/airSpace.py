@@ -3,6 +3,7 @@ from navSegment import NavSegment
 from navAirport import NavAirport
 from node import *
 from graph import *
+from path import findShortestPath
 import simplekml # Importamos la libreria de simplekml para hacer algunas funciones que se tienen que crear archivos kml
 class AirSpace:
   def __init__(self):
@@ -190,41 +191,30 @@ class AirSpace:
           print("SID o STAR no encontrados para estos aeropuertos.")
 
   # Función para exportar a KML la ruta entre dos aeropuertos
-  def pathBetweenAirportsToKML(air, origin_airport_name, destination_airport_name, nomFile):
-      # Comprobar si los nombres de los aeropuertos son válidos
-      airport_names = [airport.name for airport in air.airports]
+  def pathBetweenAirportsToKML(self, origin_airport_name, destination_airport_name, nomFile):
+      airport_names = [airport.name for airport in self.airports]
       if origin_airport_name not in airport_names or destination_airport_name not in airport_names:
           print("Error: Uno o los dos nombres de aeropuerto son inválidos.")
           return
-      # Obtener el SID del aeropuerto de origen y el STAR del aeropuerto de destino
-      SID_nameOrg = air.getSID(origin_airport_name)
-      STAR_nameDst = air.getSTAR(destination_airport_name)
+
+      SID_nameOrg = self.getSID(origin_airport_name)
+      STAR_nameDst = self.getSTAR(destination_airport_name)
+
       if SID_nameOrg and STAR_nameDst:
-          # Construir el grafo y encontrar la ruta más corta
-          G = air.buildAirGraph()
-          path, cost = G.findShortestPath(SID_nameOrg, STAR_nameDst)
-          print("Shortest path:", path)  # Add this line for debugging
-          kml = simplekml.Kml()
+          G = self.buildAirGraph()
+          path, cost = findShortestPath(G, SID_nameOrg, STAR_nameDst)
+
           if path:
-              # Añadir los segmentos del shortestPath al archivo KML
+              kml = simplekml.Kml()
               for i in range(len(path) - 1):
-                  orig_name = path[i]
-                  dst_name = path[i + 1]
-                  for segment in air.segments:
-                      if segment.orig.name == orig_name and segment.dst.name == dst_name:
-                          name = f"Segment {orig_name} - {dst_name}"
-                          coords = [(segment.orig.lon, segment.orig.lat), (segment.dst.lon, segment.dst.lat)]
-                          kml.newlinestring(name=name, coords=coords)
-                  orig_name = path[i + 1]
-                  dst_name = path[i]
-                  for segment in air.segments:
-                      if segment.orig.name == orig_name and segment.dst.name == dst_name:
-                          name = f"Segment {orig_name} - {dst_name}"
-                          coords = [(segment.orig.lon, segment.orig.lat), (segment.dst.lon, segment.dst.lat)]
-                          kml.newlinestring(name=name, coords=coords)
+                  n1 = G.nameNode(path[i])
+                  n2 = G.nameNode(path[i + 1])
+                  if n1 and n2:
+                      coords = [(n1.x, n1.y), (n2.x, n2.y)]
+                      kml.newlinestring(name=f"{n1.name} to {n2.name}", coords=coords)
               kml.save(f"{nomFile}.kml")
               print(f"KML fichero {nomFile}.kml creado.")
           else:
-              print("No hay path entre", SID_nameOrg, "i", STAR_nameDst)
+              print("No hay path entre", SID_nameOrg, "y", STAR_nameDst)
       else:
-          print("SID or STAR no encontrados para estos aeropuertos.")
+          print("SID o STAR no encontrados para estos aeropuertos.")
