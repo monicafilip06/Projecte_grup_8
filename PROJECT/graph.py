@@ -6,173 +6,200 @@ class Graph:
     def __init__(self):
         self.nodes = []
         self.segments = []
+        self.blocked = set()
 
-    def addNode(g, n):
-        i = 0
-        found = False
-        while i < len(g.nodes) and not found:
-            if g.nodes[i].name == n.name:
-                found = True
-            i += 1
-        if not found:
-            g.nodes.append(n)
-            return True
-        else:
-            return False
+    def addNode(self, n):
+        for node in self.nodes:
+            if node.name == n.name:
+                return False
+        n.blocked = False  # 🔹 Afegim la propietat bloquejat per defecte
+        self.nodes.append(n)
+        return True
 
-    def addSegment(g, name1, name2, bidirectional=True):
-        n1 = g.nameNode(name1)
-        n2 = g.nameNode(name2)
+    def addSegment(self, name1, name2, bidirectional=True):
+        n1 = self.nameNode(name1)
+        n2 = self.nameNode(name2)
         if n1 and n2:
             segment = Segment(n1, n2, bidirectional)
-            g.segments.append(segment)
+            self.segments.append(segment)
             n1.addNeighbor(n2)
             if bidirectional:
                 n2.addNeighbor(n1)
             return True
-        else:
-            return False
+        return False
 
-    def nameNode(g, name):
-        for node in g.nodes:
+    def nameNode(self, name):
+        for node in self.nodes:
             if node.name == name:
                 return node
         return None
 
-    def plot(g):
-        for segment in g.segments:
-            dx = segment.n2.x - segment.n1.x
-            dy = segment.n2.y - segment.n1.y
-            # Flecha más corta y delgada
-            plt.arrow(segment.n1.x, segment.n1.y,
-                      0.85 * dx, 0.85 * dy,
-                      length_includes_head=True,
-                      head_width=0.03, head_length=0.05,
-                      fc='black', ec='black', alpha=0.8)
-            plt.text((segment.n1.x + segment.n2.x) / 2,
-                     (segment.n1.y + segment.n2.y) / 2,
-                     '{:.2f}'.format(segment.cost), fontsize=8)
-
-        for node in g.nodes:
-            plt.plot(node.x, node.y, 'ko', markersize=4)
-            plt.text(node.x, node.y, node.name, fontsize=8)
-
-        plt.xlabel('Coordinate X')
-        plt.ylabel('Coordinate Y')
-        plt.title('Graph')
-        plt.axis('equal')
-        plt.grid(True)
-        plt.show()
-
-    def plotNode(g, name):
-        node = g.nameNode(name)
-        for neighbor in node.neighbors:
-            dx = neighbor.x - node.x
-            dy = neighbor.y - node.y
-            plt.arrow(node.x, node.y,
-                      0.85 * dx, 0.85 * dy,
-                      length_includes_head=True,
-                      head_width=0.03, head_length=0.05,
-                      fc='black', ec='black', alpha=0.8)
-            plt.text((node.x + neighbor.x) / 2,
-                     (node.y + neighbor.y) / 2,
-                     '{:.2f}'.format(node.distance(neighbor)), fontsize=8)
-
-        for node in g.nodes:
-            plt.plot(node.x, node.y, 'ko', markersize=4)
-            plt.text(node.x, node.y, node.name, fontsize=8)
-
-        plt.xlabel('Coordinate X')
-        plt.ylabel('Coordinate Y')
-        plt.title('Node {}'.format(name))
-        plt.axis('equal')
-        plt.grid(True)
-        plt.show()
-
-    def findShortestPath(self, sidOrg, sidDst):
-        start_node = self.nameNode(sidOrg)
-        end_node = self.nameNode(sidDst)
-        if not start_node or not end_node:
-            print("Error: Start or end node not found.")
-            return None, None
-        paths = [[start_node]]
-        path_costs = [0]
-        while paths:
-            min_cost = float("inf")
-            min_index = -1
-            for i, cost in enumerate(path_costs):
-                if cost >= 0 and cost < min_cost:
-                    min_cost = cost
-                    min_index = i
-            if min_index == -1:
-                print("Error: No valid paths found.")
-                return None, None
-            current_path = paths.pop(min_index)
-            current_cost = path_costs.pop(min_index)
-            last_node = current_path[-1]
-            for segment in self.segments:
-                if segment.n1 == last_node:
-                    neighbor = segment.n2
-                elif segment.bidirectional and segment.n2 == last_node:
-                    neighbor = segment.n1
-                else:
-                    continue
-                if neighbor == end_node:
-                    current_path.append(neighbor)
-                    return [node.name for node in current_path], current_cost + last_node.distance(neighbor)
-                if neighbor in current_path:
-                    continue
-                new_path = current_path + [neighbor]
-                new_path_cost = current_cost + last_node.distance(neighbor)
-                should_add_new_path = True
-                for i, path in enumerate(paths):
-                    if neighbor in path:
-                        path_cost = path_costs[i]
-                        if path_cost < 0 or path_cost > new_path_cost:
-                            paths[i] = []
-                            path_costs[i] = -1
-                        else:
-                            should_add_new_path = False
-                            break
-                if should_add_new_path:
-                    paths.append(new_path)
-                    path_costs.append(new_path_cost)
-        print("Error: No path found.")
-        return None, None
-
-    def plotPath(self, path):
-        plt.ion()
-        plt.figure()
-        plt.xlabel('Coordinate X')
-        plt.ylabel('Coordinate Y')
-        plt.title('Shortest Path')
-        plt.axis('equal')
-        plt.grid(True)
-
+    def deleteNode(self, name):
+        node_to_remove = self.nameNode(name)
+        if not node_to_remove:
+            return False
+        self.nodes = [n for n in self.nodes if n.name != name]
+        self.segments = [s for s in self.segments if s.n1 != node_to_remove and s.n2 != node_to_remove]
         for node in self.nodes:
-            plt.plot(node.x, node.y, 'ko', markersize=4)
-            plt.text(node.x, node.y, node.name, fontsize=8)
+            if node_to_remove in node.neighbors:
+                node.neighbors.remove(node_to_remove)
+        return True
 
-        for i in range(len(path) - 1):
-            start_node = self.nameNode(path[i])
-            end_node = self.nameNode(path[i + 1])
-            if start_node is not None and end_node is not None:
-                dx = end_node.x - start_node.x
-                dy = end_node.y - start_node.y
-                print("Plotting path from", start_node.name, "to", end_node.name)
-                plt.arrow(start_node.x, start_node.y,
-                          0.85 * dx, 0.85 * dy,
-                          length_includes_head=True,
-                          head_width=0.03, head_length=0.05,
-                          fc="black", ec="black", alpha=0.8)
-                plt.text((start_node.x + end_node.x) / 2,
-                         (start_node.y + end_node.y) / 2,
-                         '{:.2f}'.format(start_node.distance(end_node)), fontsize=8)
-                plt.draw()
-                plt.pause(1)
+    def deleteSegment(self, name1, name2):
+        n1 = self.nameNode(name1)
+        n2 = self.nameNode(name2)
+        if not n1 or not n2:
+            return False
+        self.segments = [s for s in self.segments if not ((s.n1 == n1 and s.n2 == n2) or (s.bidirectional and s.n1 == n2 and s.n2 == n1))]
+        if n2 in n1.neighbors:
+            n1.neighbors.remove(n2)
+        if n1 in n2.neighbors:
+            n2.neighbors.remove(n1)
+        return True
+
+    def getClosest(self, x, y):
+        if not self.nodes:
+            return None
+        closest = self.nodes[0]
+        min_dist = closest.distance_coords(x, y)
+        for node in self.nodes[1:]:
+            d = node.distance_coords(x, y)
+            if d < min_dist:
+                closest = node
+                min_dist = d
+        return closest
+
+    def blockNode(self, name):
+        node = self.nameNode(name)
+        if node:
+            node.blocked = True
+            print(f"Node {name} bloquejat.")
+            return True
+        print(f"Node {name} no trobat.")
+        return False
+
+    def unblockNode(self, name):
+        node = self.nameNode(name)
+        if node:
+            node.blocked = False
+            print(f"Node {name} desbloquejat.")
+            return True
+        print(f"Node {name} no trobat.")
+        return False
+
+    def isBlocked(self, node):
+        return getattr(node, 'blocked', False)
+
+    def getUnblockedNeighbors(self, node):
+        return [n for n in node.neighbors if not self.isBlocked(n)]
+
+    def interactiveBlockNodes(self):
+        print("\n✈️  Introdueix els noms dels waypoints que vols bloquejar (separats per comes):")
+        resposta = input("Blocar waypoints: ")
+        noms = [n.strip().upper() for n in resposta.split(',') if n.strip()]
+        for nom in noms:
+            self.blockNode(nom)
+        print("Waypoints bloquejats: ", noms)
+
+def Plot(g):
+    for seg in g.segments:
+        x1, y1 = seg.n1.x, seg.n1.y
+        x2, y2 = seg.n2.x, seg.n2.y
+        plt.annotate("",
+                     xy=(x2, y2),
+                     xytext=(x1, y1),
+                     arrowprops=dict(arrowstyle="->", color='cyan', lw=1.5))
+        plt.text((x1 + x2) / 2, (y1 + y2) / 2, f"{seg.cost:.2f}", fontsize=7)
+
+    for node in g.nodes:
+        color = 'red' if g.isBlocked(node) else 'black'
+        plt.plot(node.x, node.y, 'o', color=color)
+        plt.text(node.x, node.y, node.name, fontsize=8)
+
+    plt.axis('equal')
+    plt.grid(True)
+    plt.title("Graf amb fletxes des de origen fins a destí")
+    plt.show()
+
+def PlotNode(g, nameOrigin):
+    origin = g.nameNode(nameOrigin)
+    if not origin:
+        return False
+
+    for seg in g.segments:
+        x1, y1 = seg.n1.x, seg.n1.y
+        x2, y2 = seg.n2.x, seg.n2.y
+        color = 'gray'
+        if seg.n1 == origin and seg.n2 in origin.neighbors:
+            color = 'red'
+        plt.annotate("",
+                     xy=(x2, y2),
+                     xytext=(x1, y1),
+                     arrowprops=dict(arrowstyle="->", color=color, lw=1.5))
+        plt.text((x1 + x2) / 2, (y1 + y2) / 2, f"{seg.cost:.2f}", fontsize=7)
+
+    for node in g.nodes:
+        if node == origin:
+            color = 'blue'
+        elif node in origin.neighbors:
+            color = 'green'
+        elif g.isBlocked(node):
+            color = 'red'
+        else:
+            color = 'gray'
+        plt.plot(node.x, node.y, 'o', color=color)
+        plt.text(node.x, node.y, node.name, fontsize=8)
+
+    plt.axis('equal')
+    plt.grid(True)
+    plt.title(f"Veïns del node {nameOrigin}")
+    plt.show()
+    return True
+
+def interactivePlotNode(g):
+    from matplotlib.widgets import TextBox
+    fig, ax = plt.subplots()
+    plt.subplots_adjust(bottom=0.2)
+    ax.set_title("Introdueix el nom del node per mostrar els seus veïns")
+
+    def draw_node(nameOrigin):
+        ax.clear()
+        origin = g.nameNode(nameOrigin.upper())
+        if not origin:
+            ax.set_title(f"Node '{nameOrigin}' no trobat.")
+            fig.canvas.draw_idle()
+            return
+
+        for seg in g.segments:
+            x1, y1 = seg.n1.x, seg.n1.y
+            x2, y2 = seg.n2.x, seg.n2.y
+            color = 'gray'
+            if seg.n1 == origin and seg.n2 in origin.neighbors:
+                color = 'red'
+            ax.annotate("",
+                        xy=(x2, y2),
+                        xytext=(x1, y1),
+                        arrowprops=dict(arrowstyle="->", color=color, lw=1.5))
+            ax.text((x1 + x2) / 2, (y1 + y2) / 2, f"{seg.cost:.2f}", fontsize=7)
+
+        for node in g.nodes:
+            if node == origin:
+                color = 'blue'
+            elif node in origin.neighbors:
+                color = 'green'
+            elif g.isBlocked(node):
+                color = 'red'
             else:
-                print("Invalid nodes in path:", path[i], path[i + 1])
-        plt.ioff()
-        plt.show()
+                color = 'gray'
+            ax.plot(node.x, node.y, 'o', color=color)
+            ax.text(node.x, node.y, node.name, fontsize=8)
 
+        ax.set_title(f"Veïns del node {nameOrigin.upper()} amb fletxes")
+        ax.axis('equal')
+        ax.grid(True)
+        fig.canvas.draw_idle()
 
+    axbox = plt.axes([0.3, 0.05, 0.4, 0.075])
+    text_box = TextBox(axbox, 'Nom del node: ')
+    text_box.on_submit(draw_node)
+    plt.show()
