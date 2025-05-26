@@ -232,7 +232,7 @@ class AirSpace:
           G = self.buildAirGraph()
           path, cost = findShortestPath(G, SID_nameOrg, STAR_nameDst)
           # Si hay una ruta, recorre el camino paso a paso, crea líneas (LineString) entre cada
-              par de nodos consecutivos y las añade al archivo kml
+           # par de nodos consecutivos y las añade al archivo kml
           if path:
               kml = simplekml.Kml()
               for i in range(len(path) - 1):
