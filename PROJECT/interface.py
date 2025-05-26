@@ -13,10 +13,11 @@ class GraphApp:
         self.master.geometry("700x500")
 #Crea un grafo vacio y asignamos variables
         self.graph = Graph()
-        self.mode = None    #agregar, eliminar
-        self.selected_node = None    #nodo temporal
-        self.shortest_path_edges = []    #lista segm que forman el camino mas corto
-        self.reachable_nodes = []    #nodos alcanzables desde uno seleccionado
+        self.mode = None                     #agregar, eliminar
+        self.selected_node = None            #nodo temporal
+        self.shortest_path_edges = []        #lista segm que forman el camino mas corto
+        self.reachable_nodes = []            #nodos alcanzables desde uno seleccionado
+        
         #Se crea un marco a la izquierda para los botones
         button_frame = tk.Frame(master)
         button_frame.pack(side=tk.LEFT, padx=5, pady=5)
@@ -44,22 +45,25 @@ class GraphApp:
     #Limpia el canvas para redibujar desde cero
     def draw_graph(self):
         self.canvas.delete("all")
-        #
+        #Escala las coordenadas del segmento para que se vean bien en pantalla
         for s in self.graph.segments:
             x1, y1 = s.origin.x * 20, s.origin.y * 20
             x2, y2 = s.destination.x * 20, s.destination.y * 20
+            #Si el segmento está en la ruta más corta, se pinta rojo. Si no, negro
             color = "red" if (s.origin.name, s.destination.name) in self.shortest_path_edges else "black"
             self.canvas.create_line(x1, y1, x2, y2, fill=color)
             self.canvas.create_text((x1 + x2) / 2, (y1 + y2) / 2, text=str(round(s.cost, 2)), fill="blue")
-
+        #Dibuja cada nodo como un círculo (verde si es alcanzable, gris si no
         for n in self.graph.nodes:
             x, y = n.x * 20, n.y * 20
             color = "green" if n.name in self.reachable_nodes else "gray"
             self.canvas.create_oval(x-5, y-5, x+5, y+5, fill=color)
             self.canvas.create_text(x+10, y, text=n.name, anchor=tk.W)
-
+    #Función detecta los clics en el canvas 
     def on_canvas_click(self, event):
-        x, y = event.x / 20, event.y / 20
+        x, y = event.x / 20, event.y / 20        #Convierte las coordenadas del clic del canvas a escala lógica  
+        
+        #Aparece una caja de texto para ingresar el nombre del nodo
         if self.mode == "add_node":
             name = simpledialog.askstring("Node Name", "Enter name:")
             if name:
