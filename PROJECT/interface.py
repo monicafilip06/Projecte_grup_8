@@ -4,21 +4,23 @@ from graph import Graph
 from node import Node
 import pickle
 
+#Se inicia la clase con una ventana (master) de tkinter
+#Se configura el título y tamaño de la ventana.
 class GraphApp:
     def __init__(self, master):
         self.master = master
         self.master.title("Graph Visualizer")
         self.master.geometry("700x500")
-
+#Crea un grafo vacio y asignamos variables
         self.graph = Graph()
-        self.mode = None
-        self.selected_node = None
-        self.shortest_path_edges = []
-        self.reachable_nodes = []
-
+        self.mode = None    #agregar, eliminar
+        self.selected_node = None    #nodo temporal
+        self.shortest_path_edges = []    #lista segm que forman el camino mas corto
+        self.reachable_nodes = []    #nodos alcanzables desde uno seleccionado
+        #Se crea un marco a la izquierda para los botones
         button_frame = tk.Frame(master)
         button_frame.pack(side=tk.LEFT, padx=5, pady=5)
-
+        #Lista de botones con sus funciones asociadas
         buttons = [
             ("Show Example Graph", self.show_example_graph),
             ("Show Custom Graph", self.show_custom_graph),
@@ -32,16 +34,17 @@ class GraphApp:
             ("Show Reachability", self.activate_reachability_mode),
             ("Clear Graph", self.clear_graph),
         ]
-
+        #Se crea y organiza cada botón
         for text, cmd in buttons:
             tk.Button(button_frame, text=text, command=cmd, width=25).pack(pady=2)
-
+        #crea un area de dibujo blanco
         self.canvas = tk.Canvas(master, width=500, height=450, bg="white")
         self.canvas.pack(side=tk.RIGHT, padx=5)
         self.canvas.bind("<Button-1>", self.on_canvas_click)
-
+    #Limpia el canvas para redibujar desde cero
     def draw_graph(self):
         self.canvas.delete("all")
+        #
         for s in self.graph.segments:
             x1, y1 = s.origin.x * 20, s.origin.y * 20
             x2, y2 = s.destination.x * 20, s.destination.y * 20
