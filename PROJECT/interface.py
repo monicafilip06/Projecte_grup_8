@@ -39,14 +39,14 @@ def export_to_kml(G):
 
     kml = simplekml.Kml()
 
-    # Afegim segments com a línies
+    # 🔹 Afegim segments com a línies
     for seg in G.segments:
         coords = [(seg.n1.x, seg.n1.y), (seg.n2.x, seg.n2.y)]
         ls = kml.newlinestring(name=f"{seg.n1.name}-{seg.n2.name}", coords=coords)
         ls.style.linestyle.color = simplekml.Color.white
         ls.style.linestyle.width = 2
 
-    # Afegim nodes com a punts vermells amb etiqueta
+    # 🔸 Afegim nodes com a punts vermells amb etiqueta
     for node in G.nodes:
         pnt = kml.newpoint(name=node.name, coords=[(node.x, node.y)])
         pnt.style.iconstyle.color = simplekml.Color.red
@@ -130,7 +130,7 @@ btn_kml.on_clicked(on_export_click)
 
 plt.show()
 
-# FUNCIO PLOT PERSONALITZADA 
+# === FUNCIO PLOT PERSONALITZADA ===
 def Plot(G, titol="Graf amb fletxes des de l'origen fins al destí"):
     fig, ax = plt.subplots()
     ax.set_title(titol)
@@ -705,8 +705,134 @@ def interactivePlotNodeRegion():
     btn.on_clicked(show_neighbors)
     plt.show()
 
+def interactiveRutaPersonalitzada():
+    import matplotlib.pyplot as plt
+    from matplotlib.widgets import TextBox, Button, RadioButtons
+    import simplekml
+    from tkinter import filedialog
+
+    fig, ax = plt.subplots()
+    plt.subplots_adjust(bottom=0.55)
+    ax.set_title("Crea la teva pròpia ruta")
+
+    ax_origen = plt.axes([0.2, 0.45, 0.6, 0.05])
+    tb_origen = TextBox(ax_origen, "Aeroport origen")
+
+    ax_desti = plt.axes([0.2, 0.38, 0.6, 0.05])
+    tb_desti = TextBox(ax_desti, "Aeroport destí")
+
+    ax_intermedis = plt.axes([0.2, 0.31, 0.6, 0.05])
+    tb_intermedis = TextBox(ax_intermedis, "Nodes intermedis (separats per comes)")
+
+    ax_color = plt.axes([0.2, 0.24, 0.6, 0.05])
+    tb_color = TextBox(ax_color, "Color de la ruta (en minúscula i en català)")
+
+    ax_radio = plt.axes([0.05, 0.05, 0.2, 0.15])
+    radio = RadioButtons(ax_radio, ('Catalunya', 'Espanya', 'Europa'))
+
+    ax_btn_plot = plt.axes([0.35, 0.13, 0.25, 0.06])
+    btn_plot = Button(ax_btn_plot, "Mostrar ruta")
+
+    ax_btn_export = plt.axes([0.65, 0.13, 0.25, 0.06])
+    btn_export = Button(ax_btn_export, "Exportar a KML")
+
+    airspaces = {'Catalunya': G_cat, 'Espanya': G_spain, 'Europa': G_eur}
+    airlogics = {'Catalunya': air_cat, 'Espanya': air_spain, 'Europa': air_eur}
+
+    state = {'region': 'Catalunya', 'path': [], 'color': 'blue'}
+
+    colors_dict = {
+        'vermell': 'red',
+        'blau': 'blue',
+        'groc': 'yellow',
+        'verd': 'green',
+        'negre': 'black',
+        'gris': 'gray',
+        'taronja': 'orange',
+        'rosa': 'pink'
+    }
+
+    def on_region_select(label):
+        state['region'] = label
+
+    def on_plot_click(event):
+        region = state['region']
+        G = airspaces[region]
+        air = airlogics[region]
+
+        origen = tb_origen.text.strip().upper()
+        desti = tb_desti.text.strip().upper()
+        intermedis = [n.strip().upper() for n in tb_intermedis.text.split(',') if n.strip()]
+        color_input = tb_color.text.strip().lower()
+        color = colors_dict.get(color_input, color_input)  # convierte si está en català
+
+        sid = air.getSID(origen)
+        star = air.getSTAR(desti)
+        if not sid or not star:
+            print("❌ SID o STAR invàlids")
+            return
+
+        ruta = [sid] + intermedis + [star]
+        path_total = []
+        total_cost = 0
+
+        for i in range(len(ruta) - 1):
+            subpath, cost = findShortestPath(G, ruta[i], ruta[i + 1])
+            if not subpath:
+                print(f"❌ No es pot connectar {ruta[i]} amb {ruta[i+1]}")
+                return
+            if i > 0:
+                subpath = subpath[1:]
+            path_total += subpath
+            total_cost += cost
+
+        state['path'] = path_total
+        state['color'] = color
+
+        fig2, ax2 = plt.subplots()
+        ax2.set_title(f"Ruta personalitzada de {origen} a {desti} - Cost: {total_cost:.2f}")
+
+        for seg in G.segments:
+            ax2.plot([seg.n1.x, seg.n2.x], [seg.n1.y, seg.n2.y], color='lightgray', lw=0.5)
+
+        for node in G.nodes:
+            color_node = color if node.name in path_total else 'gray'
+            ax2.plot(node.x, node.y, 'o', color=color_node, markersize=3)
+            ax2.text(node.x, node.y, node.name, fontsize=6)
+
+        for i in range(len(path_total) - 1):
+            n1, n2 = G.nameNode(path_total[i]), G.nameNode(path_total[i + 1])
+            ax2.annotate("", xy=(n2.x, n2.y), xytext=(n1.x, n1.y), arrowprops=dict(arrowstyle="->", color=color, lw=2))
+
+        ax2.axis('equal')
+        plt.grid(True)
+        plt.show()
+
+    def on_export_click(event):
+        region = state['region']
+        G = airspaces[region]
+        path = state['path']
+        if not path:
+            print("❌ No hi ha ruta per exportar")
+            return
+
+        kml = simplekml.Kml()
+        for i in range(len(path) - 1):
+            n1, n2 = G.nameNode(path[i]), G.nameNode(path[i + 1])
+            kml.newlinestring(name=f"{n1.name}-{n2.name}", coords=[(n1.x, n1.y), (n2.x, n2.y)])
+
+        filepath = filedialog.asksaveasfilename(defaultextension=".kml", filetypes=[("KML files", "*.kml")], title="Guardar ruta personalitzada")
+        if filepath:
+            kml.save(filepath)
+            print(f"✅ Ruta personalitzada exportada a {filepath}")
+
+    radio.on_clicked(on_region_select)
+    btn_plot.on_clicked(on_plot_click)
+    btn_export.on_clicked(on_export_click)
+    plt.show()
+
 # === Llançament (ordre desitjat) ===
 interactivePlotNodeRegion()
 interactiveReachability()
 interactiveFull()
-
+interactiveRutaPersonalitzada()
