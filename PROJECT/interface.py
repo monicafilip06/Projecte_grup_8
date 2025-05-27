@@ -39,14 +39,14 @@ def export_to_kml(G):
 
     kml = simplekml.Kml()
 
-    # 🔹 Afegim segments com a línies
+    # Afegim segments com a línies
     for seg in G.segments:
         coords = [(seg.n1.x, seg.n1.y), (seg.n2.x, seg.n2.y)]
         ls = kml.newlinestring(name=f"{seg.n1.name}-{seg.n2.name}", coords=coords)
         ls.style.linestyle.color = simplekml.Color.white
         ls.style.linestyle.width = 2
 
-    # 🔸 Afegim nodes com a punts vermells amb etiqueta
+    # Afegim nodes com a punts vermells amb etiqueta
     for node in G.nodes:
         pnt = kml.newpoint(name=node.name, coords=[(node.x, node.y)])
         pnt.style.iconstyle.color = simplekml.Color.red
@@ -130,7 +130,7 @@ btn_kml.on_clicked(on_export_click)
 
 plt.show()
 
-# === FUNCIO PLOT PERSONALITZADA ===
+# FUNCIO PLOT PERSONALITZADA 
 def Plot(G, titol="Graf amb fletxes des de l'origen fins al destí"):
     fig, ax = plt.subplots()
     ax.set_title(titol)
