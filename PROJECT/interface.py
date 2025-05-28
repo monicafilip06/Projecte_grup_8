@@ -7,7 +7,7 @@ from airSpace import AirSpace
 from path import findShortestPath, findShortestPathAstar
 
 
-# Inicialitzar tkinter per als diàlegs
+# Inicialitzar una ventana principal tkinter per als diàlegs
 root = tk.Tk()
 root.withdraw()
 
@@ -15,11 +15,13 @@ root.withdraw()
 def Plot(G, titol="Espai aeri"):
     fig, ax = plt.subplots(figsize=(16, 10))  # Aumentamos el tamaño de la figura
     ax.set_title(titol, fontsize=18, fontweight='bold')  # Título más grande
+    #Dibuja una flecha por cada segmento
     for seg in G.segments:
         ax.annotate("",
                     xy=(seg.n2.x, seg.n2.y),
                     xytext=(seg.n1.x, seg.n1.y),
                     arrowprops=dict(arrowstyle="->", color='cyan', lw=0.7))
+    #dibuja cada nodo con su nombre
     for n in G.nodes:
         ax.plot(n.x, n.y, 'o', color='black', markersize=3)
         ax.text(n.x, n.y, n.name, fontsize=7)  # Tamaño más grande para el texto
@@ -30,7 +32,7 @@ def Plot(G, titol="Espai aeri"):
 
 #Exporta el graf G en format kml per visualitzar a Google Earth
 def export_to_kml(G):
-    filepath = filedialog.asksaveasfilename(
+    filepath = filedialog.asksaveasfilename(        #abre dialogo para elegir nombre del archivo
         defaultextension=".kml",
         filetypes=[("KML files", "*.kml")],
         title="Guardar espai aeri com a KML"
@@ -59,11 +61,11 @@ def export_to_kml(G):
     kml.save(filepath)
     print(f"✅ Exportat a {filepath}")
 
-# Càrrega de dades i construccio ddels espais aeris (cat,...)
+# Càrrega de dades i construccio dels espais aeris (cat,spain...)
 air_cat = AirSpace()
 air_cat.buildAirSpace("Cat")           #carrega informacio dels punts i rutes
 G_cat = air_cat.buildAirGraph()        #genera un graf , converteix aixo en un graf de nodes...
-for seg in G_cat.segments:
+for seg in G_cat.segments:             # asegura que cada nodo tenga una lista de vecinos
     if seg.n2.name not in seg.n1.neighbors:
         seg.n1.neighbors.append(seg.n2.name)
 
@@ -81,13 +83,13 @@ for seg in G_eur.segments:
     if seg.n2.name not in seg.n1.neighbors:
         seg.n1.neighbors.append(seg.n2.name)
 
-# Interfície visual
+# Crea la ventana principal de la interfaz
 fig, ax = plt.subplots(figsize=(10, 5))
 plt.subplots_adjust(left=0.35)
 ax.set_title("Selecciona l'espai aeri a visualitzar", fontsize=16, fontweight='bold')
 ax.axis('off')
 
-# Radio buttons més grans
+# Radio buttons més grans i para escoger la region
 ax_radio = plt.axes([0.05, 0.6, 0.25, 0.25], facecolor='#f0f0f0')
 radio = RadioButtons(ax_radio, ('Catalunya', 'Espanya', 'Europa'))
 [lab.set_fontsize(12) for lab in radio.labels]
@@ -97,13 +99,14 @@ btn_plot_ax = plt.axes([0.05, 0.45, 0.25, 0.08], facecolor='#d0eaff')
 btn_plot = Button(btn_plot_ax, 'Mostrar', color='#80bfff', hovercolor='#3399ff')
 btn_plot.label.set_fontsize(12)
 
-# Botó Exportar
+# Botó Exportar a KML
 btn_kml_ax = plt.axes([0.05, 0.35, 0.25, 0.08], facecolor='#d0ffd0')
 btn_kml = Button(btn_kml_ax, 'Exportar a KML', color='#80ff80', hovercolor='#33cc33')
 btn_kml.label.set_fontsize(12)
 
-# Control d'estat
+# Control d'estat, guarda la seleccion actual del usuario
 current_state = {'selected': 'Catalunya'}
+
 #Mitjançant botons i selecció de regió, podem mostrar o exportar l’espai aeri que vulguem. 
 #Aquestes funcions gestionen l’estat de l’aplicació."
 #Aquesta funció actualitza l’estat intern de la selecció de regió (Catalunya, Espanya o Europa) quan l’usuari prem un dels RadioButtons.
@@ -121,7 +124,7 @@ def on_show_click(event):        #S’activa quan l’usuari fa clic al botó �
         Plot(G_eur, titol="Espai aeri d’Europa")
 
 def on_export_click(event):                #S’activa quan es fa clic al botó “Exportar a KML”.
-    seleccio = current_state['selected']
+    seleccio = current_state['selected']    #i exporta el grafo correspondiente
     if seleccio == 'Catalunya':
         export_to_kml(G_cat)            
     elif seleccio == 'Espanya':
@@ -716,14 +719,14 @@ def interactivePlotNodeRegion():
 
 def interactiveRutaPersonalitzada():
     import matplotlib.pyplot as plt
-    from matplotlib.widgets import TextBox, Button, RadioButtons
+    from matplotlib.widgets import TextBox, Button, RadioButtons    #widgets per interectuar
     import simplekml
-    from tkinter import filedialog
-
+    from tkinter import filedialog        #obre una finestra per guardar el fitxer kml
+    #creacio de la finestra principal
     fig, ax = plt.subplots()
     plt.subplots_adjust(bottom=0.55)
     ax.set_title("Crea la teva pròpia ruta")
-
+    #creacio de caixes de text per introduir dades
     ax_origen = plt.axes([0.2, 0.45, 0.6, 0.05])
     tb_origen = TextBox(ax_origen, "Aeroport origen")
 
@@ -735,7 +738,8 @@ def interactiveRutaPersonalitzada():
 
     ax_color = plt.axes([0.2, 0.24, 0.6, 0.05])
     tb_color = TextBox(ax_color, "Color de la ruta (en minúscula i en català)")
-
+    
+    #botons per escollir regió
     ax_radio = plt.axes([0.05, 0.05, 0.2, 0.15])
     radio = RadioButtons(ax_radio, ('Catalunya', 'Espanya', 'Europa'))
 
@@ -744,12 +748,14 @@ def interactiveRutaPersonalitzada():
 
     ax_btn_export = plt.axes([0.65, 0.13, 0.25, 0.06])
     btn_export = Button(ax_btn_export, "Exportar a KML")
-
+    #diccionari de dades
+    #relaciona els noms de les regions amb els objectes Airspace corresponents
     airspaces = {'Catalunya': G_cat, 'Espanya': G_spain, 'Europa': G_eur}
     airlogics = {'Catalunya': air_cat, 'Espanya': air_spain, 'Europa': air_eur}
-
+    
+    #guarda l'estat actual(regió, camí trobat, color)
     state = {'region': 'Catalunya', 'path': [], 'color': 'blue'}
-
+    #diccionari que converteix colors en catala a color de phyton
     colors_dict = {
         'vermell': 'red',
         'blau': 'blue',
@@ -760,11 +766,13 @@ def interactiveRutaPersonalitzada():
         'taronja': 'orange',
         'rosa': 'pink'
     }
-
+    #guarda la regió triada pels Radiobuttons
     def on_region_select(label):
         state['region'] = label
-
+    # es crida quan es fa clic a "Mostrar ruta"
     def on_plot_click(event):
+
+        #llegeix l'origen, destí, nodes intermedis...
         region = state['region']
         G = airspaces[region]
         air = airlogics[region]
@@ -775,16 +783,18 @@ def interactiveRutaPersonalitzada():
         color_input = tb_color.text.strip().lower()
         color = colors_dict.get(color_input, color_input)  # convierte si está en català
 
+        #converteix l'origen i destí en nodes reals del graf
         sid = air.getSID(origen)
         star = air.getSTAR(desti)
         if not sid or not star:
             print("❌ SID o STAR invàlids")
             return
-
+            
+        #calcula la ruta cmpleta, es crea una llista amb tots els trams(origen/punts intermedis/desti)
         ruta = [sid] + intermedis + [star]
         path_total = []
         total_cost = 0
-
+        #per cada parell de punts consecutius es calcula el cami i s'afegeix al cami total
         for i in range(len(ruta) - 1):
             subpath, cost = findShortestPath(G, ruta[i], ruta[i + 1])
             if not subpath:
@@ -794,7 +804,7 @@ def interactiveRutaPersonalitzada():
                 subpath = subpath[1:]
             path_total += subpath
             total_cost += cost
-
+#Dibuixa la ruta
         state['path'] = path_total
         state['color'] = color
 
@@ -816,30 +826,31 @@ def interactiveRutaPersonalitzada():
         ax2.axis('equal')
         plt.grid(True)
         plt.show()
-
+#Funció exporta la ruta guardada com a kml
     def on_export_click(event):
         region = state['region']
         G = airspaces[region]
+#si no hi ha ruta calculada no fa res
         path = state['path']
         if not path:
             print("❌ No hi ha ruta per exportar")
             return
-
+        #Crea les linies al fitxer kml
         kml = simplekml.Kml()
         for i in range(len(path) - 1):
             n1, n2 = G.nameNode(path[i]), G.nameNode(path[i + 1])
             kml.newlinestring(name=f"{n1.name}-{n2.name}", coords=[(n1.x, n1.y), (n2.x, n2.y)])
-
+        #obre finestra per desar el fitxer i l'exporta
         filepath = filedialog.asksaveasfilename(defaultextension=".kml", filetypes=[("KML files", "*.kml")], title="Guardar ruta personalitzada")
         if filepath:
             kml.save(filepath)
             print(f"✅ Ruta personalitzada exportada a {filepath}")
-
+    #afegeix la funcionalitat als botons i mostra la interface
     radio.on_clicked(on_region_select)
     btn_plot.on_clicked(on_plot_click)
     btn_export.on_clicked(on_export_click)
     plt.show()
-
+#Llança una interfaz una darrere l'altre, primero vecinos, accesibilidad, calculo de rutas...
 # === Llançament (ordre desitjat) ===
 interactivePlotNodeRegion()
 interactiveReachability()
