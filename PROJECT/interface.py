@@ -238,16 +238,18 @@ def interactiveReachability():
     btn.on_clicked(show_reachability)
     plt.show()
 
-
+#calculo de rutas entre aeropuertos 
 def interactiveFull():
     fig, ax = plt.subplots()
     plt.subplots_adjust(bottom=0.6)
     ax.set_title("Selecciona espai aeri, aeroports i punts a bloquejar")
 
+    #cajas de texto
     tb1 = TextBox(plt.axes([0.2, 0.45, 0.6, 0.05]), "Origen (ex: LEBL)")
     tb2 = TextBox(plt.axes([0.2, 0.38, 0.6, 0.05]), "Destí (ex: LEVC)")
     tb3 = TextBox(plt.axes([0.2, 0.31, 0.6, 0.05]), "Nodes a bloquejar")
 
+    #seleccion de algoritmo y mapa
     radio_alg = RadioButtons(plt.axes([0.05, 0.05, 0.15, 0.15]), ('Ruta més curta', 'A*'))
     radio_map = RadioButtons(plt.axes([0.8, 0.05, 0.15, 0.15]), ('Catalunya', 'Espanya', 'Europa'))
 
@@ -256,6 +258,7 @@ def interactiveFull():
 
     #Podem calcular la millor ruta entre dos aeroports. 
     #També podem bloquejar punts i escollir l’algorisme: Dijkstra o A*
+    #guarda los resultados
     state = {
         'path_dijkstra': None,        #ruta mes curta (utilitza dijkstra)
         'cost_dijkstra': 0,
@@ -272,20 +275,23 @@ def interactiveFull():
         'Espanya': (air_spain, G_spain),
         'Europa': (air_eur, G_eur)
     }
-
+    #actualixa state cada vez que se hace clic en un Radiobutton
     radio_alg.on_clicked(lambda label: state.update({'selected_alg': label}))
     radio_map.on_clicked(lambda label: state.update({'selected_map': label}))
 
+    #Dibuja el camino más corto
     def plotShortestPath(G, path, cost, name1, name2, alg):
         fig, ax = plt.subplots()
         ax.set_title(f"{alg} entre {name1} i {name2} - Cost: {cost:.2f}")
         for seg in G.segments:
             ax.plot([seg.n1.x, seg.n2.x], [seg.n1.y, seg.n2.y], color='lightgray', lw=0.5)
+        #nodo rojo si estan bloqueados, en azul si pertenecn al camino
         for node in G.nodes:
             color = 'red' if hasattr(G, 'blocked') and node.name.upper() in G.blocked else (
                 'blue' if node.name in path else 'gray')
             ax.plot(node.x, node.y, 'o', color=color, markersize=3)
             ax.text(node.x, node.y, node.name, fontsize=6)
+        #flechas azules entre nodos
         for i in range(len(path) - 1):
             n1, n2 = G.nameNode(path[i]), G.nameNode(path[i + 1])
             ax.annotate("",
@@ -294,31 +300,33 @@ def interactiveFull():
                         arrowprops=dict(arrowstyle="->", color='cyan', lw=2))
             mid_x = (n1.x + n2.x) / 2
             mid_y = (n1.y + n2.y) / 2
-            ax.text(mid_x, mid_y, f"{n1.distance(n2):.2f}", fontsize=7)
+            ax.text(mid_x, mid_y, f"{n1.distance(n2):.2f}", fontsize=7)    #distancia entre nodos mostrada en texto
         ax.axis('equal')
         plt.grid(True)
         plt.show()
-
+    #lee los valores de entrada
+    #obtiene el grafo G y el espacio aereo air
     def on_click(event):
         origin = tb1.text.strip().upper()
         dest = tb2.text.strip().upper()
         blocked = [x.strip().upper() for x in tb3.text.split(',') if x.strip()]
         air, G = airspaces[state['selected_map']]
 
+        @convierte codigos de aer. a nodos de partida y llegada
         SID = air.getSID(origin)
         STAR = air.getSTAR(dest)
         if not SID or not STAR:
             ax.set_title("SID o STAR invàlid.")
             fig.canvas.draw_idle()
             return
-
+        #añade los nodos bloqueados al grafo
         if hasattr(G, 'blocked'):
             G.blocked.clear()
         else:
             G.blocked = set()
         for b in blocked:
             G.blocked.add(b)
-
+        #ejecuta el algoritmo seleccionado ( dijkstra o A*)
         alg = state['selected_alg']
         if alg == "Ruta més curta":
             path, cost = findShortestPath(G, SID, STAR)
@@ -329,50 +337,55 @@ def interactiveFull():
             ax.set_title("No hi ha camí.")
             fig.canvas.draw_idle()
             return
-
+    #Dibuja el camino
         plotShortestPath(G, path, cost, origin, dest, alg)
-
+    #Guarda los resultados en state
         if alg == "Ruta més curta":
             state.update({'path_dijkstra': path, 'cost_dijkstra': cost})
         else:
             state.update({'path_astar': path, 'cost_astar': cost})
 
         state.update({'origin': origin, 'dest': dest})
-
+    #Exporta la ruta
     def on_export(event):
+        #elige la ruta calculada
         _, G = airspaces[state['selected_map']]
         path = state['path_dijkstra'] if state['selected_alg'] == 'Ruta més curta' else state['path_astar']
         if not path:
             print("❌ No hi ha cap camí a exportar.")
             return
+        #agrega linias entre nodos de la ruta al archivo KML
         kml = simplekml.Kml()
         for i in range(len(path) - 1):
             n1, n2 = G.nameNode(path[i]), G.nameNode(path[i + 1])
             kml.newlinestring(name=f"{n1.name}-{n2.name}", coords=[(n1.x, n1.y), (n2.x, n2.y)])
+        #Nombra el archivo y lo guarda
         alg_name = state['selected_alg'].replace("*", "Astar").replace("Ruta més curta", "cami_mes_curta")
         nomFitxer = f"Ruta_{state['origin']}_a_{state['dest']}_{alg_name}.kml"
         kml.save(nomFitxer)
         print(f"✅ Ruta exportada a {nomFitxer}")
-
+    #se enlazan los botones a sus funciones
     btn_calc.on_clicked(on_click)
     btn_exp.on_clicked(on_export)
     plt.show()
+
+#Funcion para visualizar los vecinos (dento de region seleccionada)
 def interactivePlotNodeRegion():
     fig, ax = plt.subplots()
     plt.subplots_adjust(bottom=0.35)
     ax.set_title("Veïns del node (segons la regió seleccionada)")
 
-    axbox = plt.axes([0.25, 0.25, 0.5, 0.07])
+    axbox = plt.axes([0.25, 0.25, 0.5, 0.07])        #caja de texto para introducir nombre nodo
     text_box = TextBox(axbox, "Nom del node:")
 
     ax_radio = plt.axes([0.05, 0.05, 0.2, 0.15])
-    radio = RadioButtons(ax_radio, ('Catalunya', 'Espanya', 'Europa'))
+    radio = RadioButtons(ax_radio, ('Catalunya', 'Espanya', 'Europa'))    #seleccionar region
 
     btn_ax = plt.axes([0.75, 0.1, 0.2, 0.1])
     btn = Button(btn_ax, "Mostrar veïns")
 
     airspaces = {
-        'Catalunya': G_cat,
+        'Catalunya': G_cat,            #asocia nombres a grafos
         'Espanya': G_spain,
         'Europa': G_eur
     }
@@ -380,10 +393,10 @@ def interactivePlotNodeRegion():
     state = {'region': 'Europa'}
 
     def set_region(label):
-        state['region'] = label
+        state['region'] = label        #se actualiza el estado al cambiar el radiobutton
 
     radio.on_clicked(set_region)
-
+#Obtiene el grafo con la region seleccionada, lee el nodo escrito, busca el nodo en el grafo
     def show_neighbors(event):
         G = airspaces[state['region']]
         node_name = text_box.text.strip().upper()
@@ -392,11 +405,11 @@ def interactivePlotNodeRegion():
             ax.set_title(f"Node {node_name} no trobat a {state['region']}")
             fig.canvas.draw_idle()
             return
-
+#crea una nueva figura para visualizar a los vecinos
         fig2, ax2 = plt.subplots(figsize=(16, 10))
         count = 0
-        neighbor_names = getattr(node, 'neighbors', [])
-
+        neighbor_names = getattr(node, 'neighbors', [])    #extrae la lista de vecinos del nodo selec.
+#Dibuja el grafo
         for seg in G.segments:
             ax2.plot([seg.n1.x, seg.n2.x], [seg.n1.y, seg.n2.y], color='lightgray', lw=0.5)
         for n in G.nodes:
@@ -407,15 +420,17 @@ def interactivePlotNodeRegion():
                 color = 'green'
             ax2.plot(n.x, n.y, 'o', color=color, markersize=3)
             ax2.text(n.x, n.y, n.name, fontsize=5)
-
+#dibuja flechas hacia vecinos
         for n_name in neighbor_names:
             neighbor = G.nameNode(n_name)
             if not neighbor:
                 continue
+            #Flecha roja de nodo a vecino
             ax2.annotate("",
                          xy=(neighbor.x, neighbor.y),
                          xytext=(node.x, node.y),
                          arrowprops=dict(arrowstyle="->", color='red', lw=1.5))
+            #Muestra la distancia en medio de la flecha
             mid_x = (node.x + neighbor.x) / 2
             mid_y = (node.y + neighbor.y) / 2
             ax2.text(mid_x, mid_y, f"{node.distance(neighbor):.2f}", fontsize=6, color='red')
