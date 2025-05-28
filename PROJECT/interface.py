@@ -1,8 +1,8 @@
-import tkinter as tk
+import tkinter as tk                                            #per finestres de diàleg
 from tkinter import simpledialog, messagebox, filedialog
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt                                #mostra gràfics
 from matplotlib.widgets import TextBox, Button, RadioButtons
-import simplekml
+import simplekml                                               #per exportar resultats a kml
 from airSpace import AirSpace
 from path import findShortestPath, findShortestPathAstar
 
@@ -11,6 +11,7 @@ from path import findShortestPath, findShortestPathAstar
 root = tk.Tk()
 root.withdraw()
 
+#Dibuixa un graf amb nodes i connexions
 def Plot(G, titol="Espai aeri"):
     fig, ax = plt.subplots(figsize=(16, 10))  # Aumentamos el tamaño de la figura
     ax.set_title(titol, fontsize=18, fontweight='bold')  # Título más grande
@@ -27,6 +28,7 @@ def Plot(G, titol="Espai aeri"):
     plt.tight_layout()  # Optimiza uso del espacio
     plt.show()
 
+#Exporta el graf G en format kml per visualitzar a Google Earth
 def export_to_kml(G):
     filepath = filedialog.asksaveasfilename(
         defaultextension=".kml",
@@ -57,10 +59,10 @@ def export_to_kml(G):
     kml.save(filepath)
     print(f"✅ Exportat a {filepath}")
 
-# Càrrega de dades
+# Càrrega de dades i construccio ddels espais aeris (cat,...)
 air_cat = AirSpace()
-air_cat.buildAirSpace("Cat")
-G_cat = air_cat.buildAirGraph()
+air_cat.buildAirSpace("Cat")           #carrega informacio dels punts i rutes
+G_cat = air_cat.buildAirGraph()        #genera un graf , converteix aixo en un graf de nodes...
 for seg in G_cat.segments:
     if seg.n2.name not in seg.n1.neighbors:
         seg.n1.neighbors.append(seg.n2.name)
@@ -102,11 +104,14 @@ btn_kml.label.set_fontsize(12)
 
 # Control d'estat
 current_state = {'selected': 'Catalunya'}
-
-def on_radio_change(label):
+#Mitjançant botons i selecció de regió, podem mostrar o exportar l’espai aeri que vulguem. 
+#Aquestes funcions gestionen l’estat de l’aplicació."
+#Aquesta funció actualitza l’estat intern de la selecció de regió (Catalunya, Espanya o Europa) quan l’usuari prem un dels RadioButtons.
+def on_radio_change(label):            
     current_state['selected'] = label
 
-def on_show_click(event):
+def on_show_click(event):        #S’activa quan l’usuari fa clic al botó “Mostrar”.
+                                #Segons la regió escollida, crida la funció Plot(G) corresponent
     seleccio = current_state['selected']
     if seleccio == 'Catalunya':
         Plot(G_cat, titol="Espai aeri de Catalunya")
@@ -115,10 +120,10 @@ def on_show_click(event):
     elif seleccio == 'Europa':
         Plot(G_eur, titol="Espai aeri d’Europa")
 
-def on_export_click(event):
+def on_export_click(event):                #S’activa quan es fa clic al botó “Exportar a KML”.
     seleccio = current_state['selected']
     if seleccio == 'Catalunya':
-        export_to_kml(G_cat)
+        export_to_kml(G_cat)            
     elif seleccio == 'Espanya':
         export_to_kml(G_spain)
     elif seleccio == 'Europa':
@@ -131,6 +136,8 @@ btn_kml.on_clicked(on_export_click)
 plt.show()
 
 # === FUNCIO PLOT PERSONALITZADA ===
+#Aquesta versió s’utilitza dins d’algunes de les interfaces (com reachability o càlcul de rutes)
+#per fer gràfics més clars
 def Plot(G, titol="Graf amb fletxes des de l'origen fins al destí"):
     fig, ax = plt.subplots()
     ax.set_title(titol)
@@ -240,10 +247,12 @@ def interactiveFull():
     btn_calc = Button(plt.axes([0.3, 0.18, 0.2, 0.06]), "Calcular camí")
     btn_exp = Button(plt.axes([0.55, 0.18, 0.2, 0.06]), "Exportar KML")
 
+    #Podem calcular la millor ruta entre dos aeroports. 
+    #També podem bloquejar punts i escollir l’algorisme: Dijkstra o A*
     state = {
-        'path_dijkstra': None,
+        'path_dijkstra': None,        #ruta mes curta (utilitza dijkstra)
         'cost_dijkstra': 0,
-        'path_astar': None,
+        'path_astar': None,           #A* es mes eficient en certs casos
         'cost_astar': 0,
         'origin': '',
         'dest': '',
