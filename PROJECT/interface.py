@@ -131,7 +131,7 @@ def on_export_click(event):                #S’activa quan es fa clic al botó 
         export_to_kml(G_spain)
     elif seleccio == 'Europa':
         export_to_kml(G_eur)
-
+#conecta los botones con sus funciones
 radio.on_clicked(on_radio_change)
 btn_plot.on_clicked(on_show_click)
 btn_kml.on_clicked(on_export_click)
@@ -156,7 +156,7 @@ def Plot(G, titol="Graf amb fletxes des de l'origen fins al destí"):
     plt.grid(True)
     plt.show()
 
-# === CÀRREGA DE REGIONS ===
+# CÀRREGA DE REGIONS 
 air_cat = AirSpace()
 air_cat.buildAirSpace("Cat")
 G_cat = air_cat.buildAirGraph()
@@ -177,35 +177,39 @@ G_eur = air_eur.buildAirGraph()
 for seg in G_eur.segments:
     if seg.n2.name not in seg.n1.neighbors:
         seg.n1.neighbors.append(seg.n2.name)
-
+        
+#Funcion para ver todos los nodos a los que se puede llegar desde uno concreto
 def interactiveReachability():
     fig, ax = plt.subplots()
     plt.subplots_adjust(bottom=0.25)
     ax.set_title("Reachability des d'un node")
 
+    #para que el usuario introduzca el nombre del nodo
     axbox = plt.axes([0.25, 0.15, 0.5, 0.07])
     text_box = TextBox(axbox, "Nom del node:")
-
+    
+    #permite al usuraio escoger entre las 3 regiones
     ax_radio = plt.axes([0.05, 0.05, 0.2, 0.1])
     radio = RadioButtons(ax_radio, ('Catalunya', 'Espanya', 'Europa'))
 
     btn_ax = plt.axes([0.75, 0.05, 0.2, 0.1])
     btn = Button(btn_ax, "Mostrar reachability")
-
+    #contiene los tres grafos
     airspaces = {
         'Catalunya': G_cat,
         'Espanya': G_spain,
         'Europa': G_eur
     }
-
+    #guarda cual es el seleccionado
     state = {'region': 'Europa'}
 
     def set_region(label):
-        state['region'] = label
+        state['region'] = label        #cada vez que cambia el radiobutton, se actualiza
 
     radio.on_clicked(set_region)
 
     def show_reachability(event):
+        #lee el nombre y busca el nodo
         G = airspaces[state['region']]
         node_name = text_box.text.strip().upper()
         node = G.nameNode(node_name)
@@ -213,9 +217,9 @@ def interactiveReachability():
             ax.set_title(f"Node {node_name} no trobat a {state['region']}")
             fig.canvas.draw_idle()
             return
-
+        #llama al metodo reachability del grafo G
         reachable = G.reachability(node.name)
-
+        #crea una nueva fgura para dibujar
         fig2, ax2 = plt.subplots(figsize=(16, 10))
         for seg in G.segments:
             ax2.plot([seg.n1.x, seg.n2.x], [seg.n1.y, seg.n2.y], color='lightgray', lw=0.5)
