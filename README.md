@@ -1,3 +1,1 @@
-# projecte-c
-# projecte-c
-# projecte-c
+projecte grup 8
