@@ -62,3 +62,4 @@ def interactiveExportAirportKML():
 
     btn_export.on_clicked(on_export_click)
     plt.show()
+interactiveExportAirportKML()
