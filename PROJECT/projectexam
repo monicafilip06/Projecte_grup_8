@@ -1,0 +1,64 @@
+def interactiveExportAirportKML():
+    fig, ax = plt.subplots()
+    plt.subplots_adjust(bottom=0.3)
+    ax.set_title("Exportar SIDs, STARs i veïns d’un aeroport")
+
+    # Caja de texto para el código del aeropuerto
+    tb_code = TextBox(plt.axes([0.2, 0.15, 0.6, 0.08]), "Codi aeroport (ex: LEBL)")
+
+    # Selección de mapa/región
+    radio_map = RadioButtons(plt.axes([0.05, 0.05, 0.2, 0.15]), ('Catalunya', 'Espanya', 'Europa'))
+
+    # Botón exportar
+    btn_export = Button(plt.axes([0.7, 0.07, 0.25, 0.1]), "Exportar KML")
+
+    state = {'selected_map': 'Catalunya'}
+    airspaces = {
+        'Catalunya': (air_cat, G_cat),
+        'Espanya': (air_spain, G_spain),
+        'Europa': (air_eur, G_eur)
+    }
+
+    radio_map.on_clicked(lambda label: state.update({'selected_map': label}))
+
+    def on_export_click(event):
+        airport = tb_code.text.strip().upper()
+        air, G = airspaces[state['selected_map']]
+        sid = air.getSID(airport)
+        star = air.getSTAR(airport)
+
+        if not sid or not star:
+            print("❌ SID o STAR no trobats.")
+            return
+
+        # Crear conjunto de nodos a exportar
+        nodes_to_export = set()
+        nodes_to_export.add(sid)
+        nodes_to_export.add(star)
+
+        # Añadir vecinos
+        for n in [sid, star]:
+            for neighbor_name in getattr(n, 'neighbors', []):
+                neighbor_node = G.nameNode(neighbor_name)
+                if neighbor_node:
+                    nodes_to_export.add(neighbor_node)
+
+        # Crear KML
+        kml = simplekml.Kml()
+
+        for node in nodes_to_export:
+            pnt = kml.newpoint(name=node.name, coords=[(node.x, node.y)])
+            pnt.style.iconstyle.color = simplekml.Color.red
+            pnt.style.iconstyle.icon.href = 'http://maps.google.com/mapfiles/kml/paddle/red-circle.png'
+
+        for seg in G.segments:
+            if seg.n1 in nodes_to_export and seg.n2 in nodes_to_export:
+                kml.newlinestring(name=f"{seg.n1.name}-{seg.n2.name}",
+                                  coords=[(seg.n1.x, seg.n1.y), (seg.n2.x, seg.n2.y)])
+
+        filename = f"Aeroport_{airport}_detall.kml"
+        kml.save(filename)
+        print(f"✅ Exportat a {filename}")
+
+    btn_export.on_clicked(on_export_click)
+    plt.show()
