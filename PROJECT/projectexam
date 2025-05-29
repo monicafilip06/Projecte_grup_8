@@ -1,12 +1,12 @@
-def interactiveExportAirportKML():
+def interactiveExportByPrefixKML():
     fig, ax = plt.subplots()
     plt.subplots_adjust(bottom=0.3)
-    ax.set_title("Exportar SIDs, STARs i veïns d’un aeroport")
+    ax.set_title("Exportar aeròdroms que comencen per una lletra/prefijo")
 
-    # Caja de texto para el código del aeropuerto
-    tb_code = TextBox(plt.axes([0.2, 0.15, 0.6, 0.08]), "Codi aeroport (ex: LEBL)")
+    # Caja para el prefijo
+    tb_prefix = TextBox(plt.axes([0.2, 0.15, 0.6, 0.08]), "Prefix del codi (ex: L, LE, EH)")
 
-    # Selección de mapa/región
+    # Selección de región
     radio_map = RadioButtons(plt.axes([0.05, 0.05, 0.2, 0.15]), ('Catalunya', 'Espanya', 'Europa'))
 
     # Botón exportar
@@ -14,52 +14,39 @@ def interactiveExportAirportKML():
 
     state = {'selected_map': 'Catalunya'}
     airspaces = {
-        'Catalunya': (air_cat, G_cat),
-        'Espanya': (air_spain, G_spain),
-        'Europa': (air_eur, G_eur)
+        'Catalunya': G_cat,
+        'Espanya': G_spain,
+        'Europa': G_eur
     }
 
     radio_map.on_clicked(lambda label: state.update({'selected_map': label}))
 
     def on_export_click(event):
-        airport = tb_code.text.strip().upper()
-        air, G = airspaces[state['selected_map']]
-        sid = air.getSID(airport)
-        star = air.getSTAR(airport)
+        prefix = tb_prefix.text.strip().upper()
+        G = airspaces[state['selected_map']]
 
-        if not sid or not star:
-            print("❌ SID o STAR no trobats.")
+        if not prefix:
+            print("❌ Prefix no vàlid.")
             return
 
-        # Crear conjunto de nodos a exportar
-        nodes_to_export = set()
-        nodes_to_export.add(sid)
-        nodes_to_export.add(star)
+        # Buscar nodos que empiezan con el prefijo
+        matching_nodes = [node for node in G.nodes if node.name.startswith(prefix)]
 
-        # Añadir vecinos
-        for n in [sid, star]:
-            for neighbor_name in getattr(n, 'neighbors', []):
-                neighbor_node = G.nameNode(neighbor_name)
-                if neighbor_node:
-                    nodes_to_export.add(neighbor_node)
+        if not matching_nodes:
+            print(f"❌ No s'han trobat nodes amb el prefix {prefix}")
+            return
 
-        # Crear KML
+        # Crear archivo KML
         kml = simplekml.Kml()
-
-        for node in nodes_to_export:
+        for node in matching_nodes:
             pnt = kml.newpoint(name=node.name, coords=[(node.x, node.y)])
-            pnt.style.iconstyle.color = simplekml.Color.red
-            pnt.style.iconstyle.icon.href = 'http://maps.google.com/mapfiles/kml/paddle/red-circle.png'
+            pnt.style.iconstyle.color = simplekml.Color.green
+            pnt.style.iconstyle.icon.href = 'http://maps.google.com/mapfiles/kml/paddle/grn-circle.png'
 
-        for seg in G.segments:
-            if seg.n1 in nodes_to_export and seg.n2 in nodes_to_export:
-                kml.newlinestring(name=f"{seg.n1.name}-{seg.n2.name}",
-                                  coords=[(seg.n1.x, seg.n1.y), (seg.n2.x, seg.n2.y)])
-
-        filename = f"Aeroport_{airport}_detall.kml"
+        filename = f"Aeroports_comencen_{prefix}_{state['selected_map']}.kml"
         kml.save(filename)
-        print(f"✅ Exportat a {filename}")
+        print(f"✅ Exportat a {filename} ({len(matching_nodes)} nodes)")
 
     btn_export.on_clicked(on_export_click)
     plt.show()
-interactiveExportAirportKML()
+interactiveExportByPrefixKML()
